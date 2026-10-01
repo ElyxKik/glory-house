@@ -47,7 +47,7 @@ Le fichier `vercel.json` programme un appel à `04:00 UTC` tous les jours vers `
 
 Dans les variables d'environnement Vercel, ajoutez celles de `.env.example`, notamment :
 
-- `SUPABASE_SERVICE_ROLE_KEY` (uniquement côté serveur, jamais dans une variable `NEXT_PUBLIC_*`) ;
+- `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` (uniquement côté serveur, jamais dans une variable `NEXT_PUBLIC_*`) ;
 - `CRON_SECRET`, une longue valeur aléatoire. Vercel la transmet automatiquement comme en-tête d'autorisation aux tâches Cron.
 
 > Le maintien d'activité réduit le risque de mise en pause liée à l'inactivité, mais ne remplace pas les limites, quotas ou règles du plan Supabase/Vercel. Vérifiez les conditions de votre offre avant la mise en production.
