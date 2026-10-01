@@ -1,0 +1,15 @@
+# Dependencies and Next.js outputs
+node_modules/
+.next/
+out/
+
+# Local secrets
+.env
+.env.local
+.env.*.local
+
+# Vercel and tooling
+.vercel/
+*.tsbuildinfo
+.DS_Store
+npm-debug.log*
