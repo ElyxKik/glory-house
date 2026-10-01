@@ -4,6 +4,7 @@ import "./palette.css";
 import "./workflow.css";
 import "./app.css";
 import "./role-dashboard.css";
+import "./auth.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
