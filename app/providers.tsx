@@ -1,10 +1,33 @@
 "use client";
-import { createContext,useContext,useEffect,useState } from "react";
-import { seedClasses,seedRequests,seedStudents,seedTransactions,seedUsers } from "@/lib/seed";
-import type { Role,SchoolClass,SchoolRequest,StaffUser,Student,Transaction } from "@/lib/types";
-type Store={role:Role;setRole:(r:Role)=>void;students:Student[];classes:SchoolClass[];requests:SchoolRequest[];transactions:Transaction[];users:StaffUser[];addStudent:(v:Omit<Student,"id"|"status">)=>void;addClass:(v:Omit<SchoolClass,"id"|"students">)=>void;addRequest:(v:Pick<SchoolRequest,"subject"|"details"|"category">)=>void;evaluateRequest:(id:string,n:number)=>void;decideRequest:(id:string,a:boolean)=>void;addTransaction:(v:Omit<Transaction,"id"|"status"|"date">)=>void;decideTransaction:(id:string,a:boolean)=>void;addUser:(v:Pick<StaffUser,"name"|"email"|"role">)=>void;toggleUser:(id:string)=>void};
-const C=createContext<Store|null>(null);const today=()=>new Intl.DateTimeFormat("fr-CD",{day:"2-digit",month:"short",year:"numeric"}).format(new Date());
-export function Providers({children}:{children:React.ReactNode}){const[role,setRole]=useState<Role>("principal_admin");const[students,setStudents]=useState(seedStudents);const[classes,setClasses]=useState(seedClasses);const[requests,setRequests]=useState(seedRequests);const[transactions,setTransactions]=useState(seedTransactions);const[users,setUsers]=useState(seedUsers);const[ready,setReady]=useState(false);
-useEffect(()=>{try{const s=localStorage.getItem("glory-house-store");if(s){const d=JSON.parse(s);setStudents(d.students??seedStudents);setClasses(d.classes??seedClasses);setRequests(d.requests??seedRequests);setTransactions(d.transactions??seedTransactions);setUsers(d.users??seedUsers)}}finally{setReady(true)}},[]);useEffect(()=>{if(ready)localStorage.setItem("glory-house-store",JSON.stringify({students,classes,requests,transactions,users}))},[ready,students,classes,requests,transactions,users]);
-const value:Store={role,setRole,students,classes,requests,transactions,users,addStudent:v=>setStudents(a=>[{...v,id:`ELV-${a.length+487}`,status:"Actif"},...a]),addClass:v=>setClasses(a=>[{...v,id:`CLS-${a.length+1}`,students:0},...a]),addRequest:v=>setRequests(a=>[{...v,id:`DEM-${Date.now()}`,amount:null,status:"pending_finance",requestedBy:"Direction",createdAt:today()},...a]),evaluateRequest:(id,amount)=>setRequests(a=>a.map(x=>x.id===id?{...x,amount,status:"pending_admin"}:x)),decideRequest:(id,ok)=>setRequests(a=>a.map(x=>x.id===id?{...x,status:ok?"approved":"rejected"}:x)),addTransaction:v=>setTransactions(a=>[{...v,id:`TRX-${Date.now()}`,status:"pending",date:today()},...a]),decideTransaction:(id,ok)=>setTransactions(a=>a.map(x=>x.id===id?{...x,status:ok?"approved":"rejected"}:x)),addUser:v=>setUsers(a=>[{...v,id:`USR-${Date.now()}`,active:true},...a]),toggleUser:id=>setUsers(a=>a.map(x=>x.id===id?{...x,active:!x.active}:x))};return <C.Provider value={value}>{children}</C.Provider>}
-export function useStore(){const v=useContext(C);if(!v)throw new Error("Store unavailable");return v}
+import { createContext, useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import type { Role, SchoolClass, SchoolRequest, StaffUser, Student, Transaction } from "@/lib/types";
+type Store = { role: Role; name: string; setRole: (r: Role) => void; students: Student[]; classes: SchoolClass[]; requests: SchoolRequest[]; transactions: Transaction[]; users: StaffUser[]; addStudent: (v: Omit<Student,"id"|"status">) => void; addClass: (v: Omit<SchoolClass,"id"|"students">) => void; addRequest: (v: Pick<SchoolRequest,"subject"|"details"|"category">) => void; evaluateRequest: (id:string,n:number)=>void; decideRequest:(id:string,a:boolean)=>void; addTransaction:(v:Omit<Transaction,"id"|"status"|"date">)=>void; decideTransaction:(id:string,a:boolean)=>void; addUser:(v:Pick<StaffUser,"name"|"email"|"role">)=>void; toggleUser:(id:string)=>void };
+const C = createContext<Store|null>(null);
+export function Providers({ children }: { children: React.ReactNode }) {
+  const path = usePathname();
+  const [data, setData] = useState({ role: "direction" as Role, name: "", students: [] as Student[], classes: [] as SchoolClass[], requests: [] as SchoolRequest[], transactions: [] as Transaction[], users: [] as StaffUser[] });
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState("");
+  const publicPage = ["/connexion", "/nouveau-mot-de-passe", "/"].includes(path);
+  async function load() {
+    const response = await fetch("/api/store", { cache: "no-store" });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+    setData(result); setLoaded(true);
+  }
+  useEffect(() => { if (!publicPage) { setLoaded(false); setError(""); load().catch(e => setError(e.message)); } }, [path, publicPage]);
+  async function mutate(action: string, payload: object) {
+    setError("");
+    try {
+      const response = await fetch("/api/store", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      await load();
+    } catch(e) { setError(e instanceof Error ? e.message : "Opération impossible."); }
+  }
+  const value: Store = { ...data, setRole: () => {}, addStudent: value => { void mutate("addStudent", { value }); }, addClass: value => { void mutate("addClass", { value }); }, addRequest: value => { void mutate("addRequest", { value }); }, evaluateRequest: (id,amount) => { void mutate("evaluateRequest", { id,amount }); }, decideRequest: (id,approved) => { void mutate("decideRequest", { id,approved }); }, addTransaction: value => { void mutate("addTransaction", { value }); }, decideTransaction: (id,approved) => { void mutate("decideTransaction", { id,approved }); }, addUser: () => setError("Utilisez la page Utilisateurs."), toggleUser: () => setError("Modification du statut indisponible.") };
+  const denied = loaded && ((path.startsWith("/direction") && data.role === "finance") || (path.startsWith("/finance") && data.role === "direction") || (["/utilisateurs", "/validations"].includes(path) && data.role !== "principal_admin"));
+  return <C.Provider value={value}>{error && <p role="alert">{error}</p>}{publicPage ? children : denied ? <p>Accès refusé pour votre rôle.</p> : loaded ? children : <p>Chargement des données…</p>}</C.Provider>;
+}
+export function useStore() { const value = useContext(C); if (!value) throw new Error("Store unavailable"); return value; }
