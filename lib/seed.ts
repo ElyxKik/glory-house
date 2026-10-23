@@ -9,7 +9,7 @@ export const seedClasses: SchoolClass[] = [
   { id:"CLS-01",name:"6e A",level:"Secondaire",teacher:"Mme Mulumba",students:32,capacity:34 },{ id:"CLS-02",name:"5e B",level:"Secondaire",teacher:"M. Tshibangu",students:29,capacity:30 },{ id:"CLS-03",name:"4e A",level:"Secondaire",teacher:"Mme Kanku",students:28,capacity:31 },{ id:"CLS-04",name:"3e A",level:"Secondaire",teacher:"M. Mwamba",students:30,capacity:35 }
 ];
 export const seedRequests: SchoolRequest[] = [
-  { id:"DEM-103",subject:"Renouvellement des manuels de 6e",details:"Achat de 45 manuels pour les deux classes de 6e.",category:"Pédagogie",amount:null,status:"pending_finance",requestedBy:"Direction",createdAt:"28 sept. 2026" },
+  { id:"DEM-103",subject:"Renouvellement des manuels de 6e",details:"Achat de 45 manuels pour les deux classes de 6e.",category:"Pédagogie",amount:null,status:"pending_admin",requestedBy:"Direction",createdAt:"28 sept. 2026" },
   { id:"DEM-102",subject:"Réparation de la pompe à eau",details:"Intervention du technicien et remplacement de pièces.",category:"Entretien",amount:275000,status:"pending_admin",requestedBy:"Direction",createdAt:"27 sept. 2026" },
   { id:"DEM-101",subject:"Matériel de laboratoire",details:"Équipement pour les travaux pratiques.",category:"Matériel",amount:640000,status:"approved",requestedBy:"Direction",createdAt:"25 sept. 2026" }
 ];

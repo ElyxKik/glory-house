@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
     const { data: profile } = await db.from("profiles").select("role").eq("id", user.id).single();
     const { action, value: v, id, amount, approved } = await request.json();
-    const permissions: Record<string, string[]> = { addStudent: ["direction", "principal_admin"], addClass: ["direction", "principal_admin"], addRequest: ["direction"], evaluateRequest: ["finance"], decideRequest: ["principal_admin"], addTransaction: ["finance"], decideTransaction: ["principal_admin"] };
+    const permissions: Record<string, string[]> = { addStudent: ["direction", "principal_admin"], addClass: ["direction", "principal_admin"], addRequest: ["direction"], decideRequest: ["principal_admin"], addTransaction: ["finance"], decideTransaction: ["principal_admin"] };
     if (!permissions[action]?.includes(profile?.role)) return NextResponse.json({ error: "Permission refusée." }, { status: 403 });
     let result;
     if (action === "addClass") result = await db.from("classes").insert({ name: v.name, level: v.level, capacity: v.capacity, teacher: v.teacher });
@@ -37,17 +37,13 @@ export async function POST(request: Request) {
       if (!c) return NextResponse.json({ error: "Classe introuvable." }, { status: 400 });
       result = await db.from("students").insert({ full_name: v.name, gender: v.gender, guardian_name: v.guardian, guardian_phone: v.phone, class_id: c.id });
     }
-    if (action === "addRequest") result = await db.from("school_requests").insert({ subject: v.subject, details: v.details, category: v.category, requested_by: user.id, status: "pending_finance" });
+    if (action === "addRequest") result = await db.from("school_requests").insert({ subject: v.subject, details: v.details, category: v.category, amount: v.amount ?? null, requested_by: user.id, status: "pending_admin" });
     if (action === "addTransaction" && v.category === "Paiement élève") {
       const { data: student } = await createAdminClient().from("students").select("id,full_name").eq("id", v.studentId).single();
       if (!student || v.kind !== "income") return NextResponse.json({ error: "Sélectionnez un élève valide et une entrée." }, { status: 400 });
       v.label = student.full_name + " [" + student.id + "] — " + v.label;
     }
     if (action === "addTransaction") result = await db.from("financial_transactions").insert({ label: v.label, category: v.category, amount: v.amount, kind: v.kind, created_by: user.id, status: v.kind === "income" ? "approved" : "pending" });
-    if (action === "evaluateRequest") {
-      if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "Montant invalide." }, { status: 400 });
-      result = await db.from("school_requests").update({ amount, status: "pending_admin", evaluated_by: user.id, evaluated_at: new Date().toISOString() }).eq("id", id).eq("status", "pending_finance").select("id");
-    }
     if (action === "decideRequest" || action === "decideTransaction") {
       if (typeof approved !== "boolean") return NextResponse.json({ error: "Décision invalide." }, { status: 400 });
       let query = db.from(action === "decideRequest" ? "school_requests" : "financial_transactions").update({ status: approved ? "approved" : "rejected", validated_by: user.id, validated_at: new Date().toISOString() }).eq("id", id).eq("status", action === "decideRequest" ? "pending_admin" : "pending");
