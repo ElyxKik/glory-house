@@ -8,7 +8,7 @@ export async function GET() {
   const db = await createServerSupabaseClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
-  const results = await Promise.all([db.from("profiles").select("id,full_name,role").eq("id", user.id).single(), db.from("classes").select("*"), db.from("students").select("*"), db.from("school_requests").select("*"), db.from("financial_transactions").select("*"), db.from("profiles").select("id,full_name")]);
+  const results = await Promise.all([db.from("profiles").select("id,full_name,role").eq("id", user.id).single(), db.from("classes").select("*").order("created_at", { ascending: false }), db.from("students").select("*").order("created_at", { ascending: false }), db.from("school_requests").select("*").order("created_at", { ascending: false }), db.from("financial_transactions").select("*").order("created_at", { ascending: false }), db.from("profiles").select("id,full_name")]);
   if (results.some(r => r.error)) return NextResponse.json({ error: "Chargement des données impossible." }, { status: 500 });
   const profile = results[0].data as unknown as { full_name: string; role: string };
   const classes = results[1].data as unknown as Record<string, any>[];
@@ -40,7 +40,10 @@ export async function POST(request: Request) {
       if (!c) return NextResponse.json({ error: "Classe introuvable." }, { status: 400 });
       result = await db.from("students").insert({ full_name: v.name, gender: v.gender, guardian_name: v.guardian, guardian_phone: v.phone, class_id: c.id });
     }
-    if (action === "addRequest") result = await db.from("school_requests").insert({ subject: v.subject, details: v.details, category: v.category, amount: v.amount ?? null, requested_by: user.id, status: "pending_admin" });
+    if (action === "addRequest") {
+      if (v.amount != null && (!Number.isFinite(v.amount) || v.amount <= 0)) return NextResponse.json({ error: "Le montant doit être supérieur à zéro." }, { status: 400 });
+      result = await db.from("school_requests").insert({ subject: v.subject, details: v.details, category: v.category, amount: v.amount ?? null, requested_by: user.id, status: "pending_admin" });
+    }
     if (action === "addTransaction" && v.category === "Paiement élève") {
       const { data: student } = await createAdminClient().from("students").select("id,full_name").eq("id", v.studentId).single();
       if (!student || v.kind !== "income") return NextResponse.json({ error: "Sélectionnez un élève valide et une entrée." }, { status: 400 });
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
       if (action === "decideTransaction") query = query.eq("kind", "expense");
       result = await query.select("id");
     }
-    if (result?.error) { console.error("Store mutation rejected", { action, code: result.error.code }); return NextResponse.json({ error: "Opération refusée par la base. Vérifiez les permissions et les migrations." }, { status: 400 }); }
+    if (result?.error) { console.error("Store mutation rejected", { action, code: result.error.code }); return NextResponse.json({ error: result.error.message.includes("solde disponible") ? "Le montant demandé dépasse le solde disponible." : "Opération refusée par la base. Vérifiez les permissions et les migrations." }, { status: 400 }); }
     if (!result || (Array.isArray(result.data) && !result.data.length)) return NextResponse.json({ error: "Cette opération a déjà été traitée ou n’est plus en attente. Actualisez la page." }, { status: 409 });
     return NextResponse.json({ ok: true });
   } catch { return NextResponse.json({ error: "Opération impossible." }, { status: 400 }); }

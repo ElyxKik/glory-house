@@ -23,6 +23,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
       const response = await fetch("/api/store", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
+      if (action === "decideRequest" || action === "decideTransaction") {
+        setData(current => ({ ...current,
+          requests: action === "decideRequest" ? current.requests.map(item => item.id === (payload as { id: string }).id ? { ...item, status: (payload as { approved: boolean }).approved ? "approved" : "rejected" } : item) : current.requests,
+          transactions: action === "decideTransaction" ? current.transactions.map(item => item.id === (payload as { id: string }).id ? { ...item, status: (payload as { approved: boolean }).approved ? "approved" : "rejected" } : item) : current.transactions
+        }));
+      }
       await load();
       return true;
     } catch(e) { setError(e instanceof Error ? e.message : "Opération impossible."); return false; }
