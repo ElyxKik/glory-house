@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sameOrigin } from "@/lib/same-origin";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -20,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (request.headers.get("origin") !== new URL(request.url).origin) return NextResponse.json({ error: "Origine refusée." }, { status: 403 });
+  if (!sameOrigin(request)) return NextResponse.json({ error: "Origine refusée." }, { status: 403 });
   try {
     const db = await createServerSupabaseClient();
     const { data: { user } } = await db.auth.getUser();
@@ -42,16 +43,19 @@ export async function POST(request: Request) {
       if (!student || v.kind !== "income") return NextResponse.json({ error: "Sélectionnez un élève valide et une entrée." }, { status: 400 });
       v.label = student.full_name + " [" + student.id + "] — " + v.label;
     }
-    if (action === "addTransaction") result = await db.from("financial_transactions").insert({ label: v.label, category: v.category, amount: v.amount, kind: v.kind, created_by: user.id, status: "pending" });
+    if (action === "addTransaction") result = await db.from("financial_transactions").insert({ label: v.label, category: v.category, amount: v.amount, kind: v.kind, created_by: user.id, status: v.kind === "income" ? "approved" : "pending" });
     if (action === "evaluateRequest") {
       if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "Montant invalide." }, { status: 400 });
       result = await db.from("school_requests").update({ amount, status: "pending_admin", evaluated_by: user.id, evaluated_at: new Date().toISOString() }).eq("id", id).eq("status", "pending_finance").select("id");
     }
     if (action === "decideRequest" || action === "decideTransaction") {
       if (typeof approved !== "boolean") return NextResponse.json({ error: "Décision invalide." }, { status: 400 });
-      result = await db.from(action === "decideRequest" ? "school_requests" : "financial_transactions").update({ status: approved ? "approved" : "rejected", validated_by: user.id, validated_at: new Date().toISOString() }).eq("id", id).eq("status", action === "decideRequest" ? "pending_admin" : "pending").select("id");
+      let query = db.from(action === "decideRequest" ? "school_requests" : "financial_transactions").update({ status: approved ? "approved" : "rejected", validated_by: user.id, validated_at: new Date().toISOString() }).eq("id", id).eq("status", action === "decideRequest" ? "pending_admin" : "pending");
+      if (action === "decideTransaction") query = query.eq("kind", "expense");
+      result = await query.select("id");
     }
-    if (!result || result.error || (Array.isArray(result.data) && !result.data.length)) return NextResponse.json({ error: "Opération refusée ou données invalides. Actualisez la page." }, { status: 400 });
+    if (result?.error) { console.error("Store mutation rejected", { action, code: result.error.code }); return NextResponse.json({ error: "Opération refusée par la base. Vérifiez les permissions et les migrations." }, { status: 400 }); }
+    if (!result || (Array.isArray(result.data) && !result.data.length)) return NextResponse.json({ error: "Cette opération a déjà été traitée ou n’est plus en attente. Actualisez la page." }, { status: 409 });
     return NextResponse.json({ ok: true });
   } catch { return NextResponse.json({ error: "Opération impossible." }, { status: 400 }); }
 }
