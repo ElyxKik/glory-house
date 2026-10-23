@@ -7,15 +7,17 @@ export async function GET() {
   const db = await createServerSupabaseClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
-  const results = await Promise.all([db.from("profiles").select("id,full_name,role").eq("id", user.id).single(), db.from("classes").select("*"), db.from("students").select("*"), db.from("school_requests").select("*"), db.from("financial_transactions").select("*")]);
+  const results = await Promise.all([db.from("profiles").select("id,full_name,role").eq("id", user.id).single(), db.from("classes").select("*"), db.from("students").select("*"), db.from("school_requests").select("*"), db.from("financial_transactions").select("*"), db.from("profiles").select("id,full_name")]);
   if (results.some(r => r.error)) return NextResponse.json({ error: "Chargement des données impossible." }, { status: 500 });
   const profile = results[0].data as unknown as { full_name: string; role: string };
   const classes = results[1].data as unknown as Record<string, any>[];
   const students = results[2].data as unknown as Record<string, any>[];
+  const profiles = results[5].data as unknown as { id: string; full_name: string }[];
+  const profileNames = new Map(profiles.map(p => [p.id, p.full_name]));
   return NextResponse.json({ role: profile.role, name: profile.full_name,
     classes: classes.map(c => ({ ...c, teacher: c.teacher ?? "", students: students.filter(s => s.class_id === c.id).length })),
     students: students.map(s => ({ id: s.id, name: s.full_name, gender: s.gender ?? "", className: classes.find(c => c.id === s.class_id)?.name ?? "", guardian: s.guardian_name ?? "", phone: s.guardian_phone ?? "", status: s.status ?? "Actif" })),
-    requests: (results[3].data as unknown as Record<string, any>[]).map(r => ({ ...r, category: r.category ?? "", requestedBy: r.requested_by, createdAt: r.created_at })),
+    requests: (results[3].data as unknown as Record<string, any>[]).map(r => ({ ...r, category: r.category ?? "", requestedBy: profileNames.get(r.requested_by) ?? "Auteur inconnu", createdAt: r.created_at })),
     transactions: (results[4].data as unknown as Record<string, any>[]).map(t => ({ ...t, date: t.created_at })), users: []
   }, { headers: { "Cache-Control": "no-store" } });
 }
