@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -36,6 +37,11 @@ export async function POST(request: Request) {
       result = await db.from("students").insert({ full_name: v.name, gender: v.gender, guardian_name: v.guardian, guardian_phone: v.phone, class_id: c.id });
     }
     if (action === "addRequest") result = await db.from("school_requests").insert({ subject: v.subject, details: v.details, category: v.category, requested_by: user.id, status: "pending_finance" });
+    if (action === "addTransaction" && v.category === "Paiement élève") {
+      const { data: student } = await createAdminClient().from("students").select("id,full_name").eq("id", v.studentId).single();
+      if (!student || v.kind !== "income") return NextResponse.json({ error: "Sélectionnez un élève valide et une entrée." }, { status: 400 });
+      v.label = student.full_name + " [" + student.id + "] — " + v.label;
+    }
     if (action === "addTransaction") result = await db.from("financial_transactions").insert({ label: v.label, category: v.category, amount: v.amount, kind: v.kind, created_by: user.id, status: "pending" });
     if (action === "evaluateRequest") {
       if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "Montant invalide." }, { status: 400 });
