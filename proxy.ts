@@ -19,7 +19,7 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user && request.nextUrl.pathname !== "/connexion") {
+  if (!user && !["/connexion", "/nouveau-mot-de-passe"].includes(request.nextUrl.pathname)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/connexion";
     redirectUrl.searchParams.set("next", request.nextUrl.pathname);

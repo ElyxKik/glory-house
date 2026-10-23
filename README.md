@@ -30,6 +30,20 @@ Les règles RLS de Supabase appliquent ces permissions côté base de données, 
 
 ## Démarrage local
 
+### Invitations et récupération du mot de passe
+
+Dans Supabase Authentication → URL Configuration, utilisez `https://glory-house.online`
+comme Site URL et autorisez `https://glory-house.online/nouveau-mot-de-passe`
+dans Redirect URLs. Les invitations doivent utiliser cette dernière URL comme `redirectTo`.
+La page traite les jetons de session et les codes PKCE et permet de définir un mot de passe.
+Un lien expiré ou déjà utilisé doit être remplacé par un nouvel envoi.
+
+Après déploiement, envoyez un lien avec :
+
+```bash
+node scripts/send-password-reset.mjs monsieurgenie.app@gmail.com
+```
+
 1. Copiez `.env.example` vers `.env.local` et renseignez les variables Supabase.
 2. Exécutez le contenu de `supabase/migrations/001_glory_house.sql` dans le SQL Editor de votre projet Supabase (ou utilisez la CLI Supabase).
 3. Lancez `npm run dev`.
