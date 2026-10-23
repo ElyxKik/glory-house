@@ -32,8 +32,8 @@ Les règles RLS de Supabase appliquent ces permissions côté base de données, 
 
 ### Invitations et récupération du mot de passe
 
-Dans Supabase Authentication → URL Configuration, utilisez `https://glory-house.online`
-comme Site URL et autorisez `https://glory-house.online/nouveau-mot-de-passe`
+Dans Supabase Authentication → URL Configuration, utilisez `https://admin.glory-house.online`
+comme Site URL et autorisez `https://admin.glory-house.online/nouveau-mot-de-passe`
 dans Redirect URLs. Les invitations doivent utiliser cette dernière URL comme `redirectTo`.
 La page traite les jetons de session et les codes PKCE et permet de définir un mot de passe.
 Un lien expiré ou déjà utilisé doit être remplacé par un nouvel envoi.

@@ -12,7 +12,7 @@ const key = process.env.SUPABASE_ANON_KEY;
 if (!url || !key) throw new Error("Configuration Supabase manquante.");
 const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: "https://glory-house.online/nouveau-mot-de-passe"
+  redirectTo: "https://admin.glory-house.online/nouveau-mot-de-passe"
 });
 if (error) { console.error(error.message); process.exit(1); }
 console.log("Demande d’envoi acceptée par Supabase.");
