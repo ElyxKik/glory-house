@@ -45,7 +45,10 @@ export async function POST(request: Request) {
       if (!student || v.kind !== "income") return NextResponse.json({ error: "Sélectionnez un élève valide et une entrée." }, { status: 400 });
       v.label = student.full_name + " [" + student.id + "] — " + v.label;
     }
-    if (action === "addTransaction") result = await db.from("financial_transactions").insert({ label: v.label, category: v.category, amount: v.amount, kind: v.kind, created_by: user.id, status: v.kind === "income" ? "approved" : "pending" });
+    if (action === "addTransaction") {
+      const kind = v.category === "Paiement élève" ? "income" : v.kind;
+      result = await db.from("financial_transactions").insert({ label: v.label, category: v.category, amount: v.amount, kind, created_by: user.id, status: kind === "income" ? "approved" : "pending" });
+    }
     if (action === "decideRequest" || action === "decideTransaction") {
       if (typeof approved !== "boolean") return NextResponse.json({ error: "Décision invalide." }, { status: 400 });
       let query = db.from(action === "decideRequest" ? "school_requests" : "financial_transactions").update({ status: approved ? "approved" : "rejected", validated_by: user.id, validated_at: new Date().toISOString() }).eq("id", id).eq("status", action === "decideRequest" ? "pending_admin" : "pending");
