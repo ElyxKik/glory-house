@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sameOrigin } from "@/lib/same-origin";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/date";
 
 export async function GET() {
   const db = await createServerSupabaseClient();
@@ -17,8 +18,8 @@ export async function GET() {
   return NextResponse.json({ role: profile.role, name: profile.full_name,
     classes: classes.map(c => ({ ...c, teacher: c.teacher ?? "", students: students.filter(s => s.class_id === c.id).length })),
     students: students.map(s => ({ id: s.id, name: s.full_name, gender: s.gender ?? "", className: classes.find(c => c.id === s.class_id)?.name ?? "", guardian: s.guardian_name ?? "", phone: s.guardian_phone ?? "", status: s.status ?? "Actif" })),
-    requests: (results[3].data as unknown as Record<string, any>[]).map(r => ({ ...r, category: r.category ?? "", requestedBy: profileNames.get(r.requested_by) ?? "Auteur inconnu", createdAt: r.created_at })),
-    transactions: (results[4].data as unknown as Record<string, any>[]).map(t => ({ ...t, date: t.created_at })), users: []
+    requests: (results[3].data as unknown as Record<string, any>[]).map(r => ({ ...r, category: r.category ?? "", requestedBy: profileNames.get(r.requested_by) ?? "Auteur inconnu", createdAt: formatDate(r.created_at, true) })),
+    transactions: (results[4].data as unknown as Record<string, any>[]).map(t => ({ ...t, date: formatDate(t.created_at, true) })), users: []
   }, { headers: { "Cache-Control": "no-store" } });
 }
 
